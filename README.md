@@ -34,6 +34,15 @@ AutoGLM-Termux 是一个专为 Termux 环境优化的 Open-AutoGLM 一键部署�
 
 ---
 
+🍭部署演示
+
+
+![1000114284](https://github.com/user-attachments/assets/d4e89a3c-8d39-41a8-a44e-bed00c74fdb0)
+![1000114273](https://github.com/user-attachments/assets/3ca780ce-631c-4ae3-996a-8f3bf4eb4037)
+![1000114283](https://github.com/user-attachments/assets/dd618ffc-4138-4bcf-bf0a-03562b364875)
+
+---
+
 📱 前置要求
 
 1. 安卓手机（Android 7.0+）
