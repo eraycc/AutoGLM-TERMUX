@@ -48,7 +48,7 @@ AutoGLM-Termux 是一个专为 Termux 环境优化的 Open-AutoGLM 一键部署�
 1. 安卓手机（Android 7.0+）
 2. Termux 已安装（[下载地址](https://github.com/termux/termux-app/releases/)）
 3. 网络连接：手机和 Termux 设备需在同一 WiFi 网络下
-4. API Key：需要智谱 AI 或 ModelScope 的 API Key
+4. API Key：需要智谱 AI 或 ModelScope 的 API Key 或 其他支持图片识别的AI模型
 
 ---
 
@@ -102,6 +102,17 @@ chmod +x deploy-beta.sh
 
 ```bash
 pkg upgrade -y
+```
+
+步骤 3：设置termux pkg下载加速源
+
+- 执行下面的命令打开termux的pkg加速源设置GUI
+- 选择Mirror group - Rotate between several mirrors (recommended)这一项
+- 点击OK进入，通过上下箭头切换到Mirrors in Chinese Mainland - All in Chinese Mainland
+- 再次点击OK，等待自动配置完成即可
+
+```bash
+termux-change-repo
 ```
 
 步骤 3：运行部署脚本
