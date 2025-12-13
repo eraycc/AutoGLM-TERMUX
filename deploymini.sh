@@ -106,11 +106,6 @@ ensure_adb() {
   fi
 }
 
-ensure_setuptools() {
-  log_info "升级 pip..."
-  python -m pip install --upgrade pip 2>/dev/null || true
-}
-
 ##########  ADB Keyboard 提醒 ##########
 remind_adb_keyboard() {
   echo
@@ -219,16 +214,22 @@ show_adb_devices() {
 install_py_deps() {
   log_info "安装核心 Python 包..."
 
-  # 在 Termux 中优先使用预编译包
+  # Termux 下优先安装预编译的 jiter 和 pillow
   if in_termux; then
     pkg_install python-pillow
+    # 尝试安装 jiter，失败则强制二进制安装
+    if ! python -m pip install --only-binary=:all: jiter 2>/dev/null; then
+      log_warn "jiter 预编译包安装失败，尝试从 PyPI 获取..."
+      python -m pip install --prefer-binary jiter
+    fi
   else
     python -m pip install --upgrade pillow
   fi
 
-  # 安装核心依赖（requests会被openai自动安装，但显式声明更安全）
+  # 最后安装 openai
   python -m pip install --upgrade openai requests
 }
+
 
 ##########  项目拉取/更新  ##########
 clone_or_update() {
@@ -1265,8 +1266,6 @@ main() {
   ensure_pip
   ensure_git
   ensure_adb
-  
-  ensure_setuptools
   
   echo
   
