@@ -70,6 +70,22 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
+或带有卸载菜单的beta版本（未测试卸载功能）
+
+```bash
+# 1. 更新 Termux 包列表
+pkg upgrade -y
+
+# 2. 下载部署脚本
+curl -O curl -O https://github.com/eraycc/AutoGLM-TERMUX/raw/refs/heads/main/deploy-beta.sh
+
+# 3. 授予执行权限
+chmod +x deploy-beta.sh
+
+# 4. 运行部署脚本
+./deploy-beta.sh
+```
+
 部署完成后，输入 `autoglm` 即可启动智能控制面板。
 
 ---
