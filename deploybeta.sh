@@ -138,7 +138,7 @@ ensure_adb() {
 
 ensure_setuptools() {
   log_info "确保 setuptools 已安装..."
-  python -m pip install --upgrade pip setuptools wheel 2>/dev/null || true
+  python -m pip install --upgrade setuptools wheel 2>/dev/null || true
 }
 
 ##########  ADB Keyboard 提醒 ##########
