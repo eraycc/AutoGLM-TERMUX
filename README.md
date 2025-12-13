@@ -240,9 +240,9 @@ autoglm --base-url https://open.bigmodel.cn/api/paas/v4 \
 `PHONE_AGENT_DEVICE_ID`	ADB 设备 ID	自动检测	
 `PHONE_AGENT_LANG`	语言	`cn`	
 
-支持的模型服务
+自定义AI模型服务（AI模型需要支持图像识别能力）
 
-1. 智谱 BigModel（推荐）
+1. 智谱 BigModel（推荐，目前官方autoglm-phone模型可免费使用）
 - Base URL: `https://open.bigmodel.cn/api/paas/v4`
 - 模型: `autoglm-phone`
 - 申请地址: [BigModel 控制台](https://open.bigmodel.cn/)
@@ -251,6 +251,8 @@ autoglm --base-url https://open.bigmodel.cn/api/paas/v4 \
 - Base URL: `https://api-inference.modelscope.cn/v1`
 - 模型: `ZhipuAI/AutoGLM-Phone-9B`
 - 申请地址: [ModelScope 平台](https://modelscope.cn/)
+
+3. 其他自定义 AI API 参考 ModelScope 设置即可
 
 ---
 
