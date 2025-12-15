@@ -5,7 +5,7 @@ AutoGLM-Termux 部署工具
 [![Termux](https://img.shields.io/badge/Termux-支持-black)](https://termux.dev/)
 [![License](https://img.shields.io/badge/License-MIT-orange)](https://opensource.org/licenses/MIT)
 
-在安卓手机上通过 Termux 快速部署 Open-AutoGLM 智能体，实现手机自动化操作！
+在安卓手机上通过 Termux 快速部署 Open-AutoGLM 智能体，无需ROOT或电脑等其他设备，即可实现手机自动化操作！
 
 ---
 
