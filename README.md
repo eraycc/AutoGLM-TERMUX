@@ -61,6 +61,7 @@ AutoGLM-Termux 是一个专为 Termux 环境优化的 Open-AutoGLM 一键部署�
    - 下载地址：https://github.com/senzhk/ADBKeyBoard/blob/master/ADBKeyboard.apk
    - 安装后，进入 设置 → 系统 → 语言和输入法 → 虚拟键盘 → 管理键盘，启用 "ADB Keyboard"
    - 这是必须步骤，否则无法输入中文
+> 旧版本安卓系统，如安卓7及其以下，如果无法安装上述ADB Keyboard，可以尝试安装此版本ADB Keyboard：https://github.com/eraycc/AutoGLM-TERMUX/blob/main/ADBKeyboard/ADBKeyboard.apk
 
 ---
 
@@ -437,6 +438,10 @@ autoglm --uninstall
 9. 语言切换问题
    - 使用 `autoglm --lang cn` 或 `autoglm --lang en` 切换语言
    - 或在主菜单中选择"切换语言"选项
+
+10. 已经安装了ADB Keyboard，但启动时ADB Keyboard报错
+   - 确保ADB Keyboard已经安装并启用
+   - 如果ADB无线调试配对了多台设备，在切换到其他设备启动时ADB Keyboard报错，可以尝试重启termux并重新连接，或进入ADB管理菜单内断开全部连接，并重启ADB，重新连接后再次启动AutoGLM
 
 ---
 
