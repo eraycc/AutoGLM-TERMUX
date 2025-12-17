@@ -576,7 +576,7 @@ clone_or_update() {
   else
     log_info "$(i18n clone_cloning)"
     rm -rf "$dir"
-    git clone https://github.com/patchescamerababy/Open-AutoGLM.git "$dir"
+    git clone https://github.com/zai-org/Open-AutoGLM "$dir"
   fi
 
   in_termux && sed -i '/[Pp]illow/d' "$dir/requirements.txt" 2>/dev/null || true
