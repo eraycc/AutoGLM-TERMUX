@@ -55,7 +55,7 @@ AutoGLM-Termux 是一个专为 Termux 环境优化的 Open-AutoGLM 一键部署�
 
 📱 前置要求
 
-1. 安卓手机（Android 7.0+）
+1. 安卓手机（Android 11+）需支持无线调试
 2. Termux 已安装（[下载地址](https://github.com/termux/termux-app/releases/)）
 3. 网络连接：手机和 Termux 设备需在同一 WiFi 网络下
 4. API Key：需要智谱 AI 或 ModelScope 的 API Key 或 其他支持图片识别的AI模型
@@ -64,14 +64,14 @@ AutoGLM-Termux 是一个专为 Termux 环境优化的 Open-AutoGLM 一键部署�
    - 下载地址：https://github.com/termux/termux-api/releases/
    - 安装后，在 设置-应用管理 内或桌面长按 Termux:API 图标，进入应用权限管理界面，授予麦克风权限
    
-   > 旧版本安卓系统或无法安装上述Termux:API APK，可阅读官方文档：[Termux-microphone-record](https://wiki.termux.com/wiki/Termux-microphone-record) ， [Termux:API](https://wiki.termux.com/wiki/Termux:API)，在[f-droid](https://f-droid.org/packages/com.termux.api/)上尝试下载可用版本
+   > 若无法安装上述Termux:API APK，可阅读官方文档：[Termux-microphone-record](https://wiki.termux.com/wiki/Termux-microphone-record) ， [Termux:API](https://wiki.termux.com/wiki/Termux:API)，在[f-droid](https://f-droid.org/packages/com.termux.api/)上尝试下载可用版本
 
 6. ADB Keyboard（必须）：
    - 下载地址：https://github.com/senzhk/ADBKeyBoard/blob/master/ADBKeyboard.apk
    - 安装后，进入 设置 → 系统 → 语言和输入法 → 虚拟键盘 → 管理键盘，启用 "ADB Keyboard"
    - 这是必须步骤，否则无法输入中文
    
-   > 旧版本安卓系统，如安卓7及其以下，如果无法安装上述ADB Keyboard，可以尝试安装此版本ADB Keyboard：https://github.com/eraycc/AutoGLM-TERMUX/blob/main/ADBKeyboard/ADBKeyboard.apk
+   > 若果无法安装上述ADB Keyboard，可以尝试安装此版本ADB Keyboard：https://github.com/eraycc/AutoGLM-TERMUX/blob/main/ADBKeyboard/ADBKeyboard.apk
 
 ---
 
