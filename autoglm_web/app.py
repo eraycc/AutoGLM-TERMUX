@@ -172,7 +172,7 @@ def index() -> str:
         <label>描述</label>
         <input id="app_desc" />
         <label>步骤（JSON 数组，支持 adb_shell/adb_input/adb_tap/adb_swipe/adb_keyevent/app_launch/sleep/autoglm_prompt/note）</label>
-        <textarea id="app_steps" rows="6" placeholder='[{"type":"app_launch","package":"com.example.app"},{"type":"sleep","ms":800}]'></textarea>
+        <textarea id="app_steps" rows="6" placeholder='[{{"type":"app_launch","package":"com.example.app"}},{{"type":"sleep","ms":800}}]'></textarea>
         <div class="row" style="margin-top:10px;">
           <button class="primary" onclick="saveApp()">保存/更新</button>
           <button onclick="resetAppForm()">清空表单</button>
@@ -200,7 +200,7 @@ def index() -> str:
         <label>描述</label>
         <input id="task_desc" />
         <label>步骤（JSON 数组，支持 type: app/app_id 或与应用步骤相同的宏类型）</label>
-        <textarea id="task_steps" rows="6" placeholder='[{"type":"app","app_id":"<应用ID>"},{"type":"adb_input","text":"Hello"}]'></textarea>
+        <textarea id="task_steps" rows="6" placeholder='[{{"type":"app","app_id":"<应用ID>"}},{{"type":"adb_input","text":"Hello"}}]'></textarea>
         <div class="row" style="margin-top:10px;">
           <button class="primary" onclick="saveTask()">保存/更新</button>
           <button onclick="resetTaskForm()">清空表单</button>
