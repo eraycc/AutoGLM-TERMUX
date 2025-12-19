@@ -1,0 +1,81 @@
+from __future__ import annotations
+
+import subprocess
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class AdbDevice:
+    serial: str
+    status: str
+    product: str | None = None
+    model: str | None = None
+    device: str | None = None
+    transport_id: str | None = None
+
+
+def _run_adb(args: list[str], timeout_s: int = 20) -> tuple[int, str]:
+    proc = subprocess.run(
+        ["adb", *args],
+        capture_output=True,
+        text=True,
+        timeout=timeout_s,
+    )
+    out = (proc.stdout or "") + (proc.stderr or "")
+    return proc.returncode, out.strip()
+
+
+def devices() -> list[AdbDevice]:
+    code, out = _run_adb(["devices", "-l"], timeout_s=20)
+    if code != 0:
+        return []
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    if not lines:
+        return []
+    result: list[AdbDevice] = []
+    for line in lines[1:]:
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        serial, status = parts[0], parts[1]
+        kv = {}
+        for p in parts[2:]:
+            if ":" in p:
+                k, v = p.split(":", 1)
+                kv[k] = v
+        result.append(
+            AdbDevice(
+                serial=serial,
+                status=status,
+                product=kv.get("product"),
+                model=kv.get("model"),
+                device=kv.get("device"),
+                transport_id=kv.get("transport_id"),
+            )
+        )
+    return result
+
+
+def pair(host_port: str, code: str) -> tuple[bool, str]:
+    rc, out = _run_adb(["pair", host_port, code], timeout_s=60)
+    return rc == 0, out
+
+
+def connect(host_port: str) -> tuple[bool, str]:
+    rc, out = _run_adb(["connect", host_port], timeout_s=30)
+    return rc == 0, out
+
+
+def disconnect(host_port: str | None = None) -> tuple[bool, str]:
+    args = ["disconnect"] if not host_port else ["disconnect", host_port]
+    rc, out = _run_adb(args, timeout_s=30)
+    return rc == 0, out
+
+
+def restart_server() -> tuple[bool, str]:
+    rc1, out1 = _run_adb(["kill-server"], timeout_s=10)
+    rc2, out2 = _run_adb(["start-server"], timeout_s=10)
+    ok = rc1 == 0 and rc2 == 0
+    out = "\n".join([s for s in [out1, out2] if s]).strip()
+    return ok, out
+
