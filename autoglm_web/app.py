@@ -14,6 +14,21 @@ from .autoglm_process import stop as stop_autoglm
 from .autoglm_process import tail_log
 from .auth import AuthResult, require_token
 from .config import AutoglmConfig, read_config, write_config
+from .storage import (
+    delete_app,
+    delete_task,
+    list_apps,
+    list_tasks,
+    upsert_app,
+    upsert_task,
+)
+from .tasks_runner import (
+    get_interactive_log,
+    new_session,
+    run_app_by_id,
+    run_task_by_id,
+    send_interactive,
+)
 
 app = FastAPI(title="AutoGLM Web", version=__version__)
 
@@ -143,6 +158,64 @@ def index() -> str:
 
     <div class="row" style="margin-top:12px;">
       <div class="card">
+        <h3 style="margin-top:0;">应用库（启动/宏步骤）</h3>
+        <div class="row">
+          <div style="flex:1; min-width:200px;">
+            <label>应用 ID（留空则新增）</label>
+            <input id="app_id" placeholder="留空代表新应用" />
+          </div>
+          <div style="flex:1; min-width:200px;">
+            <label>名称</label>
+            <input id="app_name" />
+          </div>
+        </div>
+        <label>描述</label>
+        <input id="app_desc" />
+        <label>步骤（JSON 数组，支持 adb_shell/adb_input/adb_tap/adb_swipe/adb_keyevent/app_launch/sleep/autoglm_prompt/note）</label>
+        <textarea id="app_steps" rows="6" placeholder='[{"type":"app_launch","package":"com.example.app"},{"type":"sleep","ms":800}]'></textarea>
+        <div class="row" style="margin-top:10px;">
+          <button class="primary" onclick="saveApp()">保存/更新</button>
+          <button onclick="resetAppForm()">清空表单</button>
+          <button onclick="loadApps()">刷新列表</button>
+        </div>
+        <div class="muted" id="appMsg"></div>
+        <table style="margin-top:10px;">
+          <thead><tr><th>ID</th><th>名称</th><th>操作</th></tr></thead>
+          <tbody id="appsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">任务（可引用应用或自定义步骤）</h3>
+        <div class="row">
+          <div style="flex:1; min-width:200px;">
+            <label>任务 ID（留空则新增）</label>
+            <input id="task_id" placeholder="留空代表新任务" />
+          </div>
+          <div style="flex:1; min-width:200px;">
+            <label>名称</label>
+            <input id="task_name" />
+          </div>
+        </div>
+        <label>描述</label>
+        <input id="task_desc" />
+        <label>步骤（JSON 数组，支持 type: app/app_id 或与应用步骤相同的宏类型）</label>
+        <textarea id="task_steps" rows="6" placeholder='[{"type":"app","app_id":"<应用ID>"},{"type":"adb_input","text":"Hello"}]'></textarea>
+        <div class="row" style="margin-top:10px;">
+          <button class="primary" onclick="saveTask()">保存/更新</button>
+          <button onclick="resetTaskForm()">清空表单</button>
+          <button onclick="loadTasks()">刷新列表</button>
+        </div>
+        <div class="muted" id="taskMsg"></div>
+        <table style="margin-top:10px;">
+          <thead><tr><th>ID</th><th>名称</th><th>操作</th></tr></thead>
+          <tbody id="tasksBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <div class="card">
         <h3 style="margin-top:0;">运行</h3>
         <div class="row">
           <button class="primary" onclick="autoglmStart()">启动 AutoGLM</button>
@@ -165,12 +238,33 @@ def index() -> str:
         <pre id="logBox"></pre>
       </div>
     </div>
+
+    <div class="row" style="margin-top:12px;">
+      <div class="card">
+        <h3 style="margin-top:0;">交互模式（仅记录日志片段）</h3>
+        <div class="row" style="align-items:end;">
+          <button class="primary" onclick="startSession()">新建会话</button>
+          <div class="muted" id="sessionLabel" style="margin-left:8px;">尚未创建</div>
+        </div>
+        <label>发送内容</label>
+        <input id="session_input" placeholder="输入指令/备注，将写入日志并保持 AutoGLM 运行" />
+        <div class="row" style="margin-top:8px;">
+          <button onclick="sendSession()">发送</button>
+          <button onclick="loadSessionLog()">刷新日志</button>
+        </div>
+        <pre id="sessionLog" style="min-height:160px; max-height:260px;"></pre>
+        <div class="muted" id="sessionMsg"></div>
+      </div>
+    </div>
   </div>
 
 <script>
 const LS_TOKEN_KEY = "autoglm_web_token";
 let logOffset = 0;
 let follow = true;
+let sessionId = "";
+let appsCache = [];
+let tasksCache = [];
 
 function authHeader() {{
   const t = localStorage.getItem(LS_TOKEN_KEY) || "";
@@ -333,6 +427,229 @@ async function selectDevice(serial) {{
   }}
 }}
 
+// 应用库
+function renderApps(list) {{
+  appsCache = list || [];
+  const body = document.getElementById("appsBody");
+  body.innerHTML = "";
+  for (const a of appsCache) {{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${{a.id}}</td>
+      <td>${{a.name || ''}}</td>
+      <td>
+        <button onclick="runApp('${{a.id}}')">运行</button>
+        <button onclick="editApp('${{a.id}}')">编辑</button>
+        <button onclick="deleteApp('${{a.id}}')">删除</button>
+      </td>
+    `;
+    body.appendChild(tr);
+  }}
+}}
+
+async function loadApps() {{
+  try {{
+    const data = await apiJson("/api/apps");
+    renderApps(data.apps || []);
+    setMsg("appMsg", "应用列表已刷新");
+  }} catch (e) {{
+    setMsg("appMsg", "刷新失败: " + e.message);
+  }}
+}}
+
+function resetAppForm() {{
+  document.getElementById("app_id").value = "";
+  document.getElementById("app_name").value = "";
+  document.getElementById("app_desc").value = "";
+  document.getElementById("app_steps").value = "";
+}}
+
+async function saveApp() {{
+  const stepsRaw = document.getElementById("app_steps").value.trim() || "[]";
+  let steps;
+  try {{
+    steps = JSON.parse(stepsRaw);
+  }} catch (e) {{
+    setMsg("appMsg", "步骤 JSON 解析失败: " + e.message);
+    return;
+  }}
+  const payload = {{
+    id: document.getElementById("app_id").value.trim(),
+    name: document.getElementById("app_name").value.trim(),
+    description: document.getElementById("app_desc").value.trim(),
+    steps,
+  }};
+  try {{
+    const data = await apiJson("/api/apps", {{ method: "POST", body: JSON.stringify(payload) }});
+    setMsg("appMsg", data.message || "已保存");
+    await loadApps();
+    if (!payload.id) resetAppForm();
+  }} catch (e) {{
+    setMsg("appMsg", "保存失败: " + e.message);
+  }}
+}}
+
+function editApp(id) {{
+  const a = appsCache.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById("app_id").value = a.id;
+  document.getElementById("app_name").value = a.name || "";
+  document.getElementById("app_desc").value = a.description || "";
+  document.getElementById("app_steps").value = JSON.stringify(a.steps || [], null, 2);
+}}
+
+async function deleteApp(id) {{
+  if (!confirm("删除该应用？")) return;
+  try {{
+    await apiJson(`/api/apps/${{id}}`, {{ method: "DELETE" }});
+    setMsg("appMsg", "已删除");
+    await loadApps();
+  }} catch (e) {{
+    setMsg("appMsg", "删除失败: " + e.message);
+  }}
+}}
+
+async function runApp(id) {{
+  try {{
+    const data = await apiJson(`/api/apps/${{id}}/run`, {{ method: "POST", body: JSON.stringify({{}}) }});
+    setMsg("appMsg", "执行完成");
+    console.log(data);
+  }} catch (e) {{
+    setMsg("appMsg", "执行失败: " + e.message);
+  }}
+}}
+
+// 任务
+function renderTasks(list) {{
+  tasksCache = list || [];
+  const body = document.getElementById("tasksBody");
+  body.innerHTML = "";
+  for (const t of tasksCache) {{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${{t.id}}</td>
+      <td>${{t.name || ''}}</td>
+      <td>
+        <button onclick="runTask('${{t.id}}')">运行</button>
+        <button onclick="editTask('${{t.id}}')">编辑</button>
+        <button onclick="deleteTask('${{t.id}}')">删除</button>
+      </td>
+    `;
+    body.appendChild(tr);
+  }}
+}}
+
+async function loadTasks() {{
+  try {{
+    const data = await apiJson("/api/tasks");
+    renderTasks(data.tasks || []);
+    setMsg("taskMsg", "任务列表已刷新");
+  }} catch (e) {{
+    setMsg("taskMsg", "刷新失败: " + e.message);
+  }}
+}}
+
+function resetTaskForm() {{
+  document.getElementById("task_id").value = "";
+  document.getElementById("task_name").value = "";
+  document.getElementById("task_desc").value = "";
+  document.getElementById("task_steps").value = "";
+}}
+
+async function saveTask() {{
+  const stepsRaw = document.getElementById("task_steps").value.trim() || "[]";
+  let steps;
+  try {{
+    steps = JSON.parse(stepsRaw);
+  }} catch (e) {{
+    setMsg("taskMsg", "步骤 JSON 解析失败: " + e.message);
+    return;
+  }}
+  const payload = {{
+    id: document.getElementById("task_id").value.trim(),
+    name: document.getElementById("task_name").value.trim(),
+    description: document.getElementById("task_desc").value.trim(),
+    steps,
+  }};
+  try {{
+    const data = await apiJson("/api/tasks", {{ method: "POST", body: JSON.stringify(payload) }});
+    setMsg("taskMsg", data.message || "已保存");
+    await loadTasks();
+    if (!payload.id) resetTaskForm();
+  }} catch (e) {{
+    setMsg("taskMsg", "保存失败: " + e.message);
+  }}
+}}
+
+function editTask(id) {{
+  const t = tasksCache.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById("task_id").value = t.id;
+  document.getElementById("task_name").value = t.name || "";
+  document.getElementById("task_desc").value = t.description || "";
+  document.getElementById("task_steps").value = JSON.stringify(t.steps || [], null, 2);
+}}
+
+async function deleteTask(id) {{
+  if (!confirm("删除该任务？")) return;
+  try {{
+    await apiJson(`/api/tasks/${{id}}`, {{ method: "DELETE" }});
+    setMsg("taskMsg", "已删除");
+    await loadTasks();
+  }} catch (e) {{
+    setMsg("taskMsg", "删除失败: " + e.message);
+  }}
+}}
+
+async function runTask(id) {{
+  try {{
+    const data = await apiJson(`/api/tasks/${{id}}/run`, {{ method: "POST", body: JSON.stringify({{}}) }});
+    setMsg("taskMsg", "执行完成");
+    console.log(data);
+  }} catch (e) {{
+    setMsg("taskMsg", "执行失败: " + e.message);
+  }}
+}}
+
+// 交互模式
+async function startSession() {{
+  try {{
+    const data = await apiJson("/api/interactive/start", {{ method: "POST" }});
+    sessionId = data.session_id;
+    document.getElementById("sessionLabel").textContent = "会话: " + sessionId;
+    setMsg("sessionMsg", "会话已创建");
+    document.getElementById("sessionLog").textContent = "";
+  }} catch (e) {{
+    setMsg("sessionMsg", "创建失败: " + e.message);
+  }}
+}}
+
+async function sendSession() {{
+  const text = document.getElementById("session_input").value.trim();
+  if (!sessionId) {{
+    setMsg("sessionMsg", "请先创建会话");
+    return;
+  }}
+  if (!text) return;
+  try {{
+    const data = await apiJson(`/api/interactive/${{sessionId}}/send`, {{ method: "POST", body: JSON.stringify({{ text }}) }});
+    document.getElementById("sessionLog").textContent = (data.logs || []).join("\\n");
+    document.getElementById("session_input").value = "";
+  }} catch (e) {{
+    setMsg("sessionMsg", "发送失败: " + e.message);
+  }}
+}}
+
+async function loadSessionLog() {{
+  if (!sessionId) return;
+  try {{
+    const data = await apiJson(`/api/interactive/${{sessionId}}/log`);
+    document.getElementById("sessionLog").textContent = (data.logs || []).join("\\n");
+  }} catch (e) {{
+    setMsg("sessionMsg", "获取日志失败: " + e.message);
+  }}
+}}
+
 async function autoglmStart() {{
   try {{
     const data = await apiJson("/api/autoglm/start", {{ method: "POST" }});
@@ -390,6 +707,8 @@ async function pollLogs() {{
 async function refreshAll() {{
   await loadConfig();
   await loadDevices();
+  await loadApps();
+  await loadTasks();
   await autoglmStatus();
 }}
 
@@ -464,6 +783,106 @@ def set_device(payload: dict[str, Any], _: AuthResult = Depends(require_token)) 
 def adb_devices(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
     cfg = read_config()
     return {"devices": [d.__dict__ for d in devices()], "selected_device": cfg.device_id or ""}
+
+# 应用库
+@app.get("/api/apps")
+def api_list_apps(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    return {"apps": list_apps()}
+
+
+@app.post("/api/apps")
+def api_save_app(payload: dict[str, Any], _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    steps = payload.get("steps", [])
+    if not isinstance(steps, list):
+        raise HTTPException(status_code=400, detail="steps 必须为数组")
+    app = {
+        "id": str(payload.get("id", "") or ""),
+        "name": str(payload.get("name", "") or ""),
+        "description": str(payload.get("description", "") or ""),
+        "steps": steps,
+    }
+    saved = upsert_app(app)
+    return {"ok": True, "app": saved, "message": "已保存"}
+
+
+@app.delete("/api/apps/{app_id}")
+def api_delete_app(app_id: str, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    ok = delete_app(app_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="未找到应用")
+    return {"ok": True}
+
+
+@app.post("/api/apps/{app_id}/run")
+def api_run_app(app_id: str, payload: dict[str, Any] | None = None, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    params = payload or {}
+    try:
+        results = run_app_by_id(app_id, params)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "results": results}
+
+# 任务
+@app.get("/api/tasks")
+def api_list_tasks(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    return {"tasks": list_tasks()}
+
+
+@app.post("/api/tasks")
+def api_save_task(payload: dict[str, Any], _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    steps = payload.get("steps", [])
+    if not isinstance(steps, list):
+        raise HTTPException(status_code=400, detail="steps 必须为数组")
+    task = {
+        "id": str(payload.get("id", "") or ""),
+        "name": str(payload.get("name", "") or ""),
+        "description": str(payload.get("description", "") or ""),
+        "steps": steps,
+    }
+    saved = upsert_task(task)
+    return {"ok": True, "task": saved, "message": "已保存"}
+
+
+@app.delete("/api/tasks/{task_id}")
+def api_delete_task(task_id: str, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    ok = delete_task(task_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="未找到任务")
+    return {"ok": True}
+
+
+@app.post("/api/tasks/{task_id}/run")
+def api_run_task(task_id: str, payload: dict[str, Any] | None = None, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    params = payload or {}
+    try:
+        results = run_task_by_id(task_id, params)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "results": results}
+
+# 交互模式（仅日志片段）
+@app.post("/api/interactive/start")
+def api_interactive_start(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    sid = new_session()
+    return {"session_id": sid}
+
+
+@app.post("/api/interactive/{sid}/send")
+def api_interactive_send(sid: str, payload: dict[str, Any], _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    text = str(payload.get("text", "") or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text 不能为空")
+    try:
+        logs = send_interactive(sid, text)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"logs": logs}
+
+
+@app.get("/api/interactive/{sid}/log")
+def api_interactive_log(sid: str, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    logs = get_interactive_log(sid)
+    return {"logs": logs}
 
 
 @app.post("/api/adb/pair")

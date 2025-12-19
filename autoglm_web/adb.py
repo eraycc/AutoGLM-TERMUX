@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass
+from time import sleep
 
 
 @dataclass(frozen=True)
@@ -78,4 +79,38 @@ def restart_server() -> tuple[bool, str]:
     ok = rc1 == 0 and rc2 == 0
     out = "\n".join([s for s in [out1, out2] if s]).strip()
     return ok, out
+
+
+def shell(cmd: str, timeout_s: int = 20) -> tuple[bool, str]:
+    rc, out = _run_adb(["shell", cmd], timeout_s=timeout_s)
+    return rc == 0, out
+
+
+def input_text(text: str) -> tuple[bool, str]:
+    safe = text.replace(" ", "%s")
+    return shell(f"input text \"{safe}\"")
+
+
+def tap(x: int, y: int) -> tuple[bool, str]:
+    return shell(f"input tap {x} {y}")
+
+
+def swipe(x1: int, y1: int, x2: int, y2: int, duration_ms: int = 300) -> tuple[bool, str]:
+    return shell(f"input swipe {x1} {y1} {x2} {y2} {duration_ms}")
+
+
+def keyevent(key: str) -> tuple[bool, str]:
+    return shell(f"input keyevent {key}")
+
+
+def start_app(package: str, activity: str | None = None, action: str = "auto") -> tuple[bool, str]:
+    if action == "monkey" or (action == "auto" and not activity):
+        return shell(f"monkey -p {package} -c android.intent.category.LAUNCHER 1")
+    if activity:
+        return shell(f"am start -n {package}/{activity}")
+    return shell(f"monkey -p {package} -c android.intent.category.LAUNCHER 1")
+
+
+def pause_ms(ms: int) -> None:
+    sleep(max(ms, 0) / 1000)
 
