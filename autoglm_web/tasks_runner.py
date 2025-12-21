@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import os
+import subprocess
 import time
 import uuid
-import subprocess
-import os
 from pathlib import Path
 from typing import Any
 
 from . import adb
 from . import autoglm_process
-from .config import read_config
+from .config import config_sh_path, read_config
 from .storage import find_by_id, list_apps, list_tasks
 
 
@@ -143,9 +143,9 @@ def run_task_by_id(task_id: str, params: dict[str, Any] | None = None) -> list[d
         if st.get("type") == "app":
             app_id = st.get("app_id", "")
             sub_res = run_app_by_id(app_id, params)
-            results.append({"type": "app", "app_id": app_id, "ok": True, "output": sub_res})
-            # 如果子步骤失败，sub_res 会包含 ok=false，我们这里简单继续由子结果决定
-            if any(not r.get("ok") for r in sub_res):
+            sub_ok = not any(not r.get("ok") for r in sub_res)
+            results.append({"type": "app", "app_id": app_id, "ok": sub_ok, "output": sub_res})
+            if not sub_ok:
                 break
             continue
         ok, out = run_step(st, params)
@@ -155,12 +155,17 @@ def run_task_by_id(task_id: str, params: dict[str, Any] | None = None) -> list[d
     return results
 
 
-# 简单的内存会话，用于交互模式（仅日志片段）
+MAX_SESSIONS = 50  # 会话上限，超出则丢弃最早的
 _sessions: dict[str, list[str]] = {}
 
 
 def new_session() -> str:
     sid = uuid.uuid4().hex
+    # 控制会话总数
+    if len(_sessions) >= MAX_SESSIONS:
+        # FIFO 删除最早创建的会话
+        oldest_sid = next(iter(_sessions))
+        del _sessions[oldest_sid]
     _sessions[sid] = []
     _log_line(f"[session {sid}] started")
     return sid
@@ -193,6 +198,8 @@ def get_interactive_log(sid: str) -> list[str]:
 
 def run_prompt_once(prompt: str, timeout_s: int = 600) -> str:
     cfg = read_config()
+    if not cfg.api_key or cfg.api_key == "sk-your-apikey":
+        raise RuntimeError(f"API Key 未配置：请在 {config_sh_path()} 填写有效密钥或通过 Web 界面保存配置")
     workdir = _autoglm_dir()
     if not workdir.exists():
         raise RuntimeError(f"未找到 Open-AutoGLM 目录: {workdir}")
@@ -226,5 +233,10 @@ def run_prompt_once(prompt: str, timeout_s: int = 600) -> str:
     except subprocess.TimeoutExpired:
         raise RuntimeError("执行超时")
     output = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
+    if proc.returncode != 0:
+        brief_out = output.strip()
+        if len(brief_out) > 800:
+            brief_out = brief_out[:800] + "...(truncated)"
+        raise RuntimeError(f"AutoGLM 子进程退出码 {proc.returncode}，输出: {brief_out or '无'}")
     _log_line(f"[prompt once] {prompt}")
     return output.strip()

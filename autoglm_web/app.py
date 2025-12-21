@@ -369,19 +369,41 @@ async function saveConfig() {{
 
 function renderDevices(list, selected) {{
   const body = document.getElementById("devicesBody");
-  body.innerHTML = "";
+  body.textContent = "";
   for (const d of list) {{
     const tr = document.createElement("tr");
-    const isSelected = selected && d.serial === selected;
-    tr.innerHTML = `
-      <td>${{d.serial}} ${{isSelected ? '<span class="pill">selected</span>' : ''}}</td>
-      <td>${{d.status}}</td>
-      <td>${{d.model || ''}}</td>
-      <td>
-        <button onclick="selectDevice('${{d.serial}}')">选用</button>
-        <button onclick="disconnectOne('${{d.serial}}')">断开</button>
-      </td>
-    `;
+
+    const tdSerial = document.createElement("td");
+    tdSerial.textContent = d.serial || "";
+    if (selected && d.serial === selected) {{
+      tdSerial.appendChild(document.createTextNode(" "));
+      const pill = document.createElement("span");
+      pill.className = "pill";
+      pill.textContent = "selected";
+      tdSerial.appendChild(pill);
+    }}
+    tr.appendChild(tdSerial);
+
+    const tdStatus = document.createElement("td");
+    tdStatus.textContent = d.status || "";
+    tr.appendChild(tdStatus);
+
+    const tdModel = document.createElement("td");
+    tdModel.textContent = d.model || "";
+    tr.appendChild(tdModel);
+
+    const tdOps = document.createElement("td");
+    const btnSelect = document.createElement("button");
+    btnSelect.textContent = "选用";
+    btnSelect.onclick = () => selectDevice(d.serial);
+    const btnDisconnect = document.createElement("button");
+    btnDisconnect.textContent = "断开";
+    btnDisconnect.onclick = () => disconnectOne(d.serial);
+    tdOps.appendChild(btnSelect);
+    tdOps.appendChild(document.createTextNode(" "));
+    tdOps.appendChild(btnDisconnect);
+    tr.appendChild(tdOps);
+
     body.appendChild(tr);
   }}
 }}
@@ -463,18 +485,35 @@ async function selectDevice(serial) {{
 function renderApps(list) {{
   appsCache = list || [];
   const body = document.getElementById("appsBody");
-  body.innerHTML = "";
+  body.textContent = "";
   for (const a of appsCache) {{
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${{a.id}}</td>
-      <td>${{a.name || ''}}</td>
-      <td>
-        <button onclick="runApp('${{a.id}}')">运行</button>
-        <button onclick="editApp('${{a.id}}')">编辑</button>
-        <button onclick="deleteApp('${{a.id}}')">删除</button>
-      </td>
-    `;
+
+    const tdId = document.createElement("td");
+    tdId.textContent = a.id || "";
+    tr.appendChild(tdId);
+
+    const tdName = document.createElement("td");
+    tdName.textContent = a.name || "";
+    tr.appendChild(tdName);
+
+    const tdOps = document.createElement("td");
+    const btnRun = document.createElement("button");
+    btnRun.textContent = "运行";
+    btnRun.onclick = () => runApp(a.id);
+    const btnEdit = document.createElement("button");
+    btnEdit.textContent = "编辑";
+    btnEdit.onclick = () => editApp(a.id);
+    const btnDelete = document.createElement("button");
+    btnDelete.textContent = "删除";
+    btnDelete.onclick = () => deleteApp(a.id);
+    tdOps.appendChild(btnRun);
+    tdOps.appendChild(document.createTextNode(" "));
+    tdOps.appendChild(btnEdit);
+    tdOps.appendChild(document.createTextNode(" "));
+    tdOps.appendChild(btnDelete);
+    tr.appendChild(tdOps);
+
     body.appendChild(tr);
   }}
 }}
@@ -555,18 +594,35 @@ async function runApp(id) {{
 function renderTasks(list) {{
   tasksCache = list || [];
   const body = document.getElementById("tasksBody");
-  body.innerHTML = "";
+  body.textContent = "";
   for (const t of tasksCache) {{
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${{t.id}}</td>
-      <td>${{t.name || ''}}</td>
-      <td>
-        <button onclick="runTask('${{t.id}}')">运行</button>
-        <button onclick="editTask('${{t.id}}')">编辑</button>
-        <button onclick="deleteTask('${{t.id}}')">删除</button>
-      </td>
-    `;
+
+    const tdId = document.createElement("td");
+    tdId.textContent = t.id || "";
+    tr.appendChild(tdId);
+
+    const tdName = document.createElement("td");
+    tdName.textContent = t.name || "";
+    tr.appendChild(tdName);
+
+    const tdOps = document.createElement("td");
+    const btnRun = document.createElement("button");
+    btnRun.textContent = "运行";
+    btnRun.onclick = () => runTask(t.id);
+    const btnEdit = document.createElement("button");
+    btnEdit.textContent = "编辑";
+    btnEdit.onclick = () => editTask(t.id);
+    const btnDelete = document.createElement("button");
+    btnDelete.textContent = "删除";
+    btnDelete.onclick = () => deleteTask(t.id);
+    tdOps.appendChild(btnRun);
+    tdOps.appendChild(document.createTextNode(" "));
+    tdOps.appendChild(btnEdit);
+    tdOps.appendChild(document.createTextNode(" "));
+    tdOps.appendChild(btnDelete);
+    tr.appendChild(tdOps);
+
     body.appendChild(tr);
   }}
 }}
@@ -859,6 +915,10 @@ def adb_devices(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
 
 @app.get("/api/adb/packages")
 def adb_packages(limit: int | None = None, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    max_limit = 200
+    if limit is None or limit <= 0:
+        limit = 120
+    limit = min(limit, max_limit)
     pkgs = list_packages_with_labels(third_party=True, limit=limit)
     return {"packages": pkgs}
 

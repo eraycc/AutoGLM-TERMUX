@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 import subprocess
 from dataclasses import dataclass
 from time import sleep
@@ -131,8 +132,10 @@ def shell(cmd: str, timeout_s: int = 20) -> tuple[bool, str]:
 
 
 def input_text(text: str) -> tuple[bool, str]:
-    safe = text.replace(" ", "%s")
-    return shell(f"input text \"{safe}\"")
+    # 使用 shell 转义规避命令注入，同时去掉换行符避免意外分行
+    sanitized = text.replace("\r", " ").replace("\n", " ")
+    safe = shlex.quote(sanitized)
+    return shell(f"input text {safe}")
 
 
 def tap(x: int, y: int) -> tuple[bool, str]:
@@ -148,6 +151,18 @@ def keyevent(key: str) -> tuple[bool, str]:
 
 
 def start_app(package: str, activity: str | None = None, action: str = "auto") -> tuple[bool, str]:
+    # 严格限制包名/Activity 以防命令注入
+    def _validate(name: str, field: str) -> None:
+        if not name or not all(ch.isalnum() or ch in "._" for ch in name):
+            raise ValueError(f"{field} 非法：仅允许字母/数字/._")
+
+    _validate(package, "package")
+    if activity:
+        # Activity 形如 com.xx/.MainActivity 或 com.xx/com.xx.MainActivity，统一校验组件名
+        parts = activity.split("/", 1)
+        for p in parts:
+            _validate(p, "activity")
+
     if action == "monkey" or (action == "auto" and not activity):
         return shell(f"monkey -p {package} -c android.intent.category.LAUNCHER 1")
     if activity:
