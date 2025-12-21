@@ -23,22 +23,8 @@ from .autoglm_process import tail_log
 from .apps_config import add_entries, load_app_packages
 from .auth import AuthResult, require_token
 from .config import AutoglmConfig, config_exists, read_config, write_config
-from .storage import (
-    delete_app,
-    delete_task,
-    list_apps,
-    list_tasks,
-    upsert_app,
-    upsert_task,
-)
-from .tasks_runner import (
-    get_interactive_log,
-    new_session,
-    run_prompt_once,
-    run_app_by_id,
-    run_task_by_id,
-    send_interactive,
-)
+from .storage import delete_task, list_tasks, upsert_task
+from .tasks_runner import get_interactive_log, new_session, run_prompt_once, run_task_by_id, send_interactive
 
 app = FastAPI(title="AutoGLM Web", version=__version__)
 
@@ -186,64 +172,34 @@ def index() -> str:
       </div>
     </div>
 
-    <div class="row" style="margin-top:12px;">
-      <div class="card">
-        <h3 style="margin-top:0;">应用库（启动/宏步骤）</h3>
-        <div class="row">
-          <div style="flex:1; min-width:200px;">
-            <label>应用 ID（留空则新增）</label>
-            <input id="app_id" placeholder="留空代表新应用" />
-          </div>
-          <div style="flex:1; min-width:200px;">
-            <label>名称</label>
-            <input id="app_name" />
-          </div>
+    <div class="card" style="margin-top:12px;">
+      <h3 style="margin-top:0;">任务（可自定义步骤或直接用自然语言）</h3>
+      <div class="row">
+        <div style="flex:1; min-width:200px;">
+          <label>任务 ID（留空则新增）</label>
+          <input id="task_id" placeholder="留空代表新任务" />
         </div>
-        <label>描述</label>
-        <input id="app_desc" />
-        <label>步骤（JSON 数组，支持 adb_shell/adb_input/adb_tap/adb_swipe/adb_keyevent/app_launch/sleep/autoglm_prompt/note）</label>
-        <textarea id="app_steps" rows="6" placeholder='[{{"type":"app_launch","package":"com.example.app"}},{{"type":"sleep","ms":800}}]'></textarea>
-        <div class="row" style="margin-top:10px;">
-          <button class="primary" onclick="saveApp()">保存/更新</button>
-          <button onclick="resetAppForm()">清空表单</button>
-          <button onclick="loadApps()">刷新列表</button>
+        <div style="flex:1; min-width:200px;">
+          <label>名称</label>
+          <input id="task_name" />
         </div>
-        <div class="muted" id="appMsg"></div>
-        <table style="margin-top:10px;">
-          <thead><tr><th>ID</th><th>名称</th><th>操作</th></tr></thead>
-          <tbody id="appsBody"></tbody>
-        </table>
       </div>
-
-      <div class="card">
-        <h3 style="margin-top:0;">任务（可引用应用或自定义步骤）</h3>
-        <div class="row">
-          <div style="flex:1; min-width:200px;">
-            <label>任务 ID（留空则新增）</label>
-            <input id="task_id" placeholder="留空代表新任务" />
-          </div>
-          <div style="flex:1; min-width:200px;">
-            <label>名称</label>
-            <input id="task_name" />
-          </div>
-        </div>
-        <label>描述</label>
-        <input id="task_desc" />
-        <label>自然语言指令（可选，填了则直接调用模型执行，无需写步骤）</label>
-        <textarea id="task_prompt" rows="3" placeholder="例如：打开微信并给张三发一条消息"></textarea>
-        <label>步骤（JSON 数组，支持 type: app/app_id 或与应用步骤相同的宏类型；如果已填写自然语言指令，可以留空）</label>
-        <textarea id="task_steps" rows="6" placeholder='[{{"type":"app","app_id":"<应用ID>"}},{{"type":"adb_input","text":"Hello"}}]'></textarea>
-        <div class="row" style="margin-top:10px;">
-          <button class="primary" onclick="saveTask()">保存/更新</button>
-          <button onclick="resetTaskForm()">清空表单</button>
-          <button onclick="loadTasks()">刷新列表</button>
-        </div>
-        <div class="muted" id="taskMsg"></div>
-        <table style="margin-top:10px;">
-          <thead><tr><th>ID</th><th>名称</th><th>操作</th></tr></thead>
-          <tbody id="tasksBody"></tbody>
-        </table>
+      <label>描述</label>
+      <input id="task_desc" />
+      <label>自然语言指令（可选，填了则直接调用模型执行，无需写步骤）</label>
+      <textarea id="task_prompt" rows="3" placeholder="例如：打开微信并给张三发一条消息"></textarea>
+      <label>步骤（JSON 数组，支持 adb_shell/adb_input/adb_tap/adb_swipe/adb_keyevent/app_launch/sleep/autoglm_prompt/note）</label>
+      <textarea id="task_steps" rows="6" placeholder='[{{"type":"adb_input","text":"Hello"}}]'></textarea>
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" onclick="saveTask()">保存/更新</button>
+        <button onclick="resetTaskForm()">清空表单</button>
+        <button onclick="loadTasks()">刷新列表</button>
       </div>
+      <div class="muted" id="taskMsg"></div>
+      <table style="margin-top:10px;">
+        <thead><tr><th>ID</th><th>名称</th><th>操作</th></tr></thead>
+        <tbody id="tasksBody"></tbody>
+      </table>
     </div>
 
     <div class="row" style="margin-top:12px;">
@@ -295,7 +251,6 @@ const LS_TOKEN_KEY = "autoglm_web_token";
 let logOffset = 0;
 let follow = true;
 let sessionId = "";
-let appsCache = [];
 let tasksCache = [];
 
 function authHeader() {{
@@ -478,115 +433,6 @@ async function selectDevice(serial) {{
     await loadDevices();
   }} catch (e) {{
     setMsg("adbMsg", "设置失败: " + e.message);
-  }}
-}}
-
-// 应用库
-function renderApps(list) {{
-  appsCache = list || [];
-  const body = document.getElementById("appsBody");
-  body.textContent = "";
-  for (const a of appsCache) {{
-    const tr = document.createElement("tr");
-
-    const tdId = document.createElement("td");
-    tdId.textContent = a.id || "";
-    tr.appendChild(tdId);
-
-    const tdName = document.createElement("td");
-    tdName.textContent = a.name || "";
-    tr.appendChild(tdName);
-
-    const tdOps = document.createElement("td");
-    const btnRun = document.createElement("button");
-    btnRun.textContent = "运行";
-    btnRun.onclick = () => runApp(a.id);
-    const btnEdit = document.createElement("button");
-    btnEdit.textContent = "编辑";
-    btnEdit.onclick = () => editApp(a.id);
-    const btnDelete = document.createElement("button");
-    btnDelete.textContent = "删除";
-    btnDelete.onclick = () => deleteApp(a.id);
-    tdOps.appendChild(btnRun);
-    tdOps.appendChild(document.createTextNode(" "));
-    tdOps.appendChild(btnEdit);
-    tdOps.appendChild(document.createTextNode(" "));
-    tdOps.appendChild(btnDelete);
-    tr.appendChild(tdOps);
-
-    body.appendChild(tr);
-  }}
-}}
-
-async function loadApps() {{
-  try {{
-    const data = await apiJson("/api/apps");
-    renderApps(data.apps || []);
-    setMsg("appMsg", "应用列表已刷新");
-  }} catch (e) {{
-    setMsg("appMsg", "刷新失败: " + e.message);
-  }}
-}}
-
-function resetAppForm() {{
-  document.getElementById("app_id").value = "";
-  document.getElementById("app_name").value = "";
-  document.getElementById("app_desc").value = "";
-  document.getElementById("app_steps").value = "";
-}}
-
-async function saveApp() {{
-  const stepsRaw = document.getElementById("app_steps").value.trim() || "[]";
-  let steps;
-  try {{
-    steps = JSON.parse(stepsRaw);
-  }} catch (e) {{
-    setMsg("appMsg", "步骤 JSON 解析失败: " + e.message);
-    return;
-  }}
-  const payload = {{
-    id: document.getElementById("app_id").value.trim(),
-    name: document.getElementById("app_name").value.trim(),
-    description: document.getElementById("app_desc").value.trim(),
-    steps,
-  }};
-  try {{
-    const data = await apiJson("/api/apps", {{ method: "POST", body: JSON.stringify(payload) }});
-    setMsg("appMsg", data.message || "已保存");
-    await loadApps();
-    if (!payload.id) resetAppForm();
-  }} catch (e) {{
-    setMsg("appMsg", "保存失败: " + e.message);
-  }}
-}}
-
-function editApp(id) {{
-  const a = appsCache.find(x => x.id === id);
-  if (!a) return;
-  document.getElementById("app_id").value = a.id;
-  document.getElementById("app_name").value = a.name || "";
-  document.getElementById("app_desc").value = a.description || "";
-  document.getElementById("app_steps").value = JSON.stringify(a.steps || [], null, 2);
-}}
-
-async function deleteApp(id) {{
-  if (!confirm("删除该应用？")) return;
-  try {{
-    await apiJson(`/api/apps/${{id}}`, {{ method: "DELETE" }});
-    setMsg("appMsg", "已删除");
-    await loadApps();
-  }} catch (e) {{
-    setMsg("appMsg", "删除失败: " + e.message);
-  }}
-}}
-
-async function runApp(id) {{
-  try {{
-    const data = await apiJson(`/api/apps/${{id}}/run`, {{ method: "POST", body: JSON.stringify({{}}) }});
-    setMsg("appMsg", "执行完成");
-    console.log(data);
-  }} catch (e) {{
-    setMsg("appMsg", "执行失败: " + e.message);
   }}
 }}
 
@@ -833,7 +679,6 @@ async function pollLogs() {{
 async function refreshAll() {{
   await loadConfig();
   await loadDevices();
-  await loadApps();
   await loadTasks();
   await autoglmStatus();
 }}
@@ -944,44 +789,6 @@ def adb_packages_add(payload: dict[str, Any], _: AuthResult = Depends(require_to
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"ok": True, "size": len(data), "message": f"已写入 {len(entries)} 项到 apps.py"}
-
-# 应用库
-@app.get("/api/apps")
-def api_list_apps(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
-    return {"apps": list_apps()}
-
-
-@app.post("/api/apps")
-def api_save_app(payload: dict[str, Any], _: AuthResult = Depends(require_token)) -> dict[str, Any]:
-    steps = payload.get("steps", [])
-    if not isinstance(steps, list):
-        raise HTTPException(status_code=400, detail="steps 必须为数组")
-    app = {
-        "id": str(payload.get("id", "") or ""),
-        "name": str(payload.get("name", "") or ""),
-        "description": str(payload.get("description", "") or ""),
-        "steps": steps,
-    }
-    saved = upsert_app(app)
-    return {"ok": True, "app": saved, "message": "已保存"}
-
-
-@app.delete("/api/apps/{app_id}")
-def api_delete_app(app_id: str, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
-    ok = delete_app(app_id)
-    if not ok:
-        raise HTTPException(status_code=404, detail="未找到应用")
-    return {"ok": True}
-
-
-@app.post("/api/apps/{app_id}/run")
-def api_run_app(app_id: str, payload: dict[str, Any] | None = None, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
-    params = payload or {}
-    try:
-        results = run_app_by_id(app_id, params)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    return {"ok": True, "results": results}
 
 # 任务
 @app.get("/api/tasks")

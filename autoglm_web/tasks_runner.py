@@ -10,7 +10,7 @@ from typing import Any
 from . import adb
 from . import autoglm_process
 from .config import config_sh_path, read_config
-from .storage import find_by_id, list_apps, list_tasks
+from .storage import find_by_id, list_tasks
 
 
 def _log_line(text: str) -> None:
@@ -104,23 +104,6 @@ def run_step(step: dict[str, Any], params: dict[str, Any]) -> tuple[bool, str]:
     return False, f"未知步骤类型: {stype}"
 
 
-def run_app_by_id(app_id: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    params = params or {}
-    apps = list_apps()
-    app = find_by_id(apps, app_id)
-    if not app:
-        raise ValueError("未找到应用")
-    results: list[dict[str, Any]] = []
-    steps = app.get("steps", [])
-    ensure_autoglm_running()
-    for st in steps:
-        ok, out = run_step(st, params)
-        results.append({"type": st.get("type"), "ok": ok, "output": out})
-        if not ok:
-            break
-    return results
-
-
 def run_task_by_id(task_id: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     params = params or {}
     tasks = list_tasks()
@@ -142,12 +125,9 @@ def run_task_by_id(task_id: str, params: dict[str, Any] | None = None) -> list[d
     for st in steps:
         if st.get("type") == "app":
             app_id = st.get("app_id", "")
-            sub_res = run_app_by_id(app_id, params)
-            sub_ok = not any(not r.get("ok") for r in sub_res)
-            results.append({"type": "app", "app_id": app_id, "ok": sub_ok, "output": sub_res})
-            if not sub_ok:
-                break
-            continue
+            msg = f"应用库功能已移除，无法执行应用 {app_id or '未指定'}，请直接在任务步骤中编排 adb_* 或 autoglm_prompt"
+            results.append({"type": "app", "app_id": app_id, "ok": False, "output": msg})
+            break
         ok, out = run_step(st, params)
         results.append({"type": st.get("type"), "ok": ok, "output": out})
         if not ok:

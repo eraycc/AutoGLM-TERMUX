@@ -137,7 +137,12 @@ class AutoglmConfig:
     def as_public_dict(self, mask_api_key: bool = True) -> dict[str, Any]:
         api_key = self.api_key
         if mask_api_key and api_key:
-            api_key = api_key[:6] + "..." + api_key[-4:] if len(api_key) > 12 else "***"
+            if len(api_key) > 12:
+                api_key = api_key[:6] + "******" + api_key[-4:]
+            elif len(api_key) > 6:
+                api_key = api_key[:3] + "***" + api_key[-3:]
+            else:
+                api_key = "***"
         return {
             "base_url": self.base_url,
             "model": self.model,

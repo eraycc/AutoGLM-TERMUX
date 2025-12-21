@@ -16,10 +16,6 @@ def _web_dir() -> Path:
     return base / "web"
 
 
-def apps_path() -> Path:
-    return _web_dir() / "apps.json"
-
-
 def tasks_path() -> Path:
     return _web_dir() / "tasks.json"
 
@@ -40,48 +36,9 @@ def _dump_json(path: Path, data: list[dict[str, Any]]) -> None:
     tmp.replace(path)
 
 
-def list_apps() -> list[dict[str, Any]]:
-    with _lock:
-        return _load_json(apps_path())
-
-
 def list_tasks() -> list[dict[str, Any]]:
     with _lock:
         return _load_json(tasks_path())
-
-
-def _save(path: Path, items: list[dict[str, Any]]) -> None:
-    with _lock:
-        _dump_json(path, items)
-
-
-def upsert_app(app: dict[str, Any]) -> dict[str, Any]:
-    with _lock:
-        items = _load_json(apps_path())
-        if "id" not in app or not app["id"]:
-            app["id"] = uuid.uuid4().hex
-            items.append(app)
-        else:
-            found = False
-            for idx, it in enumerate(items):
-                if it.get("id") == app["id"]:
-                    items[idx] = app
-                    found = True
-                    break
-            if not found:
-                items.append(app)
-        _dump_json(apps_path(), items)
-        return app
-
-
-def delete_app(app_id: str) -> bool:
-    with _lock:
-        items = _load_json(apps_path())
-        new_items = [it for it in items if it.get("id") != app_id]
-        changed = len(new_items) != len(items)
-        if changed:
-            _dump_json(apps_path(), new_items)
-        return changed
 
 
 def upsert_task(task: dict[str, Any]) -> dict[str, Any]:
@@ -118,4 +75,3 @@ def find_by_id(items: list[dict[str, Any]], item_id: str) -> dict[str, Any] | No
         if it.get("id") == item_id:
             return it
     return None
-
