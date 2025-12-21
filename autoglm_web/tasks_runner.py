@@ -169,11 +169,22 @@ def send_interactive(sid: str, text: str) -> list[str]:
         output_lines = [f"执行失败: {msg}"]
     else:
         offset = _session_offsets.get(sid, 0)
-        time.sleep(0.2)
+        collected: list[str] = []
         try:
-            new_offset, chunk = autoglm_process.tail_log(offset)
-            _session_offsets[sid] = new_offset
-            output_lines = [ln for ln in chunk.splitlines() if ln.strip()]
+            # 轮询几次，尽量获取完整日志片段
+            for _ in range(12):
+                new_offset, chunk = autoglm_process.tail_log(offset)
+                offset = new_offset
+                if chunk:
+                    collected.extend(chunk.splitlines())
+                    # 若已有输出，跳出；否则继续等
+                    if chunk.strip():
+                        break
+                time.sleep(0.25)
+            _session_offsets[sid] = offset
+            output_lines = [ln for ln in collected if ln.strip()]
+            if not output_lines:
+                output_lines = ["已发送，暂无新日志（可能仍在执行）"]
         except Exception as e:
             output_lines = [f"发送成功，但读取日志失败: {e}"]
     line = f"[session {sid}] {text}"
