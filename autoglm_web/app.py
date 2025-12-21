@@ -716,7 +716,8 @@ def set_config(payload: dict[str, Any], _: AuthResult = Depends(require_token)) 
     model = str(payload.get("model", cfg.model) or cfg.model).strip()
     api_key = str(payload.get("api_key", "") or "").strip()
     max_steps = str(payload.get("max_steps", cfg.max_steps) or cfg.max_steps).strip()
-    device_id = str(payload.get("device_id", cfg.device_id) or "").strip()
+    device_id_raw = payload.get("device_id", None)
+    device_id = str(device_id_raw if device_id_raw is not None and str(device_id_raw).strip() != "" else cfg.device_id).strip()
     lang = str(payload.get("lang", cfg.lang) or cfg.lang).strip()
 
     if not api_key:
