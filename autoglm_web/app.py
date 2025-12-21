@@ -858,8 +858,8 @@ def adb_devices(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
     return {"devices": [d.__dict__ for d in devices()], "selected_device": cfg.device_id or ""}
 
 @app.get("/api/adb/packages")
-def adb_packages(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
-    pkgs = list_packages(third_party=True)
+def adb_packages(limit: int | None = None, _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    pkgs = list_packages_with_labels(third_party=True, limit=limit)
     return {"packages": pkgs}
 
 # 写入 apps.py
