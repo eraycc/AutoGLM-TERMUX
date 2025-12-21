@@ -81,6 +81,24 @@ def restart_server() -> tuple[bool, str]:
     return ok, out
 
 
+def list_packages(third_party: bool = True) -> list[str]:
+    args = ["shell", "pm", "list", "packages"]
+    if third_party:
+        args.append("-3")
+    code, out = _run_adb(args, timeout_s=30)
+    if code != 0:
+        return []
+    pkgs = []
+    for ln in out.splitlines():
+        ln = ln.strip()
+        if not ln:
+            continue
+        if ln.startswith("package:"):
+            ln = ln.replace("package:", "", 1)
+        pkgs.append(ln)
+    return pkgs
+
+
 def shell(cmd: str, timeout_s: int = 20) -> tuple[bool, str]:
     rc, out = _run_adb(["shell", cmd], timeout_s=timeout_s)
     return rc == 0, out

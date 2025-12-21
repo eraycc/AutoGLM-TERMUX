@@ -7,11 +7,12 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from . import __version__
-from .adb import connect, devices, disconnect, pair, restart_server
+from .adb import connect, devices, disconnect, list_packages, pair, restart_server
 from .autoglm_process import start as start_autoglm
 from .autoglm_process import status as autoglm_status
 from .autoglm_process import stop as stop_autoglm
 from .autoglm_process import tail_log
+from .apps_config import add_entries, load_app_packages
 from .auth import AuthResult, require_token
 from .config import AutoglmConfig, config_exists, read_config, write_config
 from .storage import (
@@ -154,6 +155,26 @@ def index() -> str:
           </table>
         </div>
         <div class="muted" id="adbMsg"></div>
+
+        <div style="margin-top:12px;">
+          <div class="row" style="align-items:center;">
+            <h4 style="margin:0; flex:1;">已安装应用（第三方）</h4>
+            <button onclick="fetchPackages()">获取包名</button>
+          </div>
+          <div class="row" style="margin-top:8px; align-items:end;">
+            <div style="flex:1; min-width:200px;">
+              <label>选择包名</label>
+              <select id="pkg_select" style="width:100%; padding:8px; border-radius:8px;"></select>
+            </div>
+            <div style="flex:1; min-width:200px;">
+              <label>应用名称（写入 apps.py 时使用，不填则默认用包名）</label>
+              <input id="pkg_name" placeholder="例如 wechat" />
+            </div>
+            <button class="primary" onclick="addToAppsConfig()">添加到 apps.py</button>
+          </div>
+          <div class="muted" id="pkgMsg"></div>
+        </div>
+
       </div>
     </div>
 
@@ -645,6 +666,42 @@ async function sendSession() {{
   }}
 }}
 
+// 已安装包名
+async function fetchPackages() {{
+  try {{
+    const data = await apiJson("/api/adb/packages");
+    const pkgs = data.packages || [];
+    const sel = document.getElementById("pkg_select");
+    sel.innerHTML = "";
+    pkgs.forEach(p => {{
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    }});
+    setMsg("pkgMsg", `已获取 ${pkgs.length} 个包名`);
+  }} catch (e) {{
+    setMsg("pkgMsg", "获取失败: " + e.message);
+  }}
+}}
+
+async function addToAppsConfig() {{
+  const sel = document.getElementById("pkg_select");
+  const pkg = sel.value;
+  if (!pkg) {{
+    setMsg("pkgMsg", "请先获取并选择包名");
+    return;
+  }}
+  const nameInput = document.getElementById("pkg_name").value.trim() || pkg;
+  const payload = {{ items: [{{ name: nameInput, package: pkg }}] }};
+  try {{
+    const data = await apiJson("/api/adb/packages/add", {{ method: "POST", body: JSON.stringify(payload) }});
+    setMsg("pkgMsg", data.message || "已写入 apps.py");
+  }} catch (e) {{
+    setMsg("pkgMsg", "写入失败: " + e.message);
+  }}
+}}
+
 async function loadSessionLog() {{
   if (!sessionId) return;
   try {{
@@ -791,6 +848,34 @@ def set_device(payload: dict[str, Any], _: AuthResult = Depends(require_token)) 
 def adb_devices(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
     cfg = read_config()
     return {"devices": [d.__dict__ for d in devices()], "selected_device": cfg.device_id or ""}
+
+@app.get("/api/adb/packages")
+def adb_packages(_: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    pkgs = list_packages(third_party=True)
+    return {"packages": pkgs}
+
+# 写入 apps.py
+@app.post("/api/adb/packages/add")
+def adb_packages_add(payload: dict[str, Any], _: AuthResult = Depends(require_token)) -> dict[str, Any]:
+    items = payload.get("items", [])
+    if not isinstance(items, list) or not items:
+        raise HTTPException(status_code=400, detail="items 不能为空")
+    entries: dict[str, str] = {}
+    for it in items:
+        name = str(it.get("name", "")).strip()
+        pkg = str(it.get("package", "")).strip()
+        if not name or not pkg:
+            continue
+        entries[name] = pkg
+    if not entries:
+        raise HTTPException(status_code=400, detail="未提供有效的 name/package")
+    try:
+        data = add_entries(entries)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="未找到 apps.py，请先确认 Open-AutoGLM 路径")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "size": len(data), "message": f"已写入 {len(entries)} 项到 apps.py"}
 
 # 应用库
 @app.get("/api/apps")
