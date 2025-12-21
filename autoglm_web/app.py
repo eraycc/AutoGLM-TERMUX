@@ -740,17 +740,8 @@ def set_config(payload: dict[str, Any], _: AuthResult = Depends(require_token)) 
 
 @app.post("/api/config/device")
 def set_device(payload: dict[str, Any], _: AuthResult = Depends(require_token)) -> dict[str, Any]:
-    cfg = read_config()
     device_id = str(payload.get("device_id", "") or "").strip()
-    updated = AutoglmConfig(
-        base_url=cfg.base_url,
-        model=cfg.model,
-        api_key=cfg.api_key,
-        max_steps=cfg.max_steps,
-        device_id=device_id,
-        lang=cfg.lang,
-    )
-    write_config(updated)
+    update_device_id(device_id)
     return {"ok": True, "message": f"已设置设备: {device_id or '自动检测'}"}
 
 

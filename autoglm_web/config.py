@@ -190,3 +190,31 @@ def write_config(updated: AutoglmConfig) -> None:
 def config_exists() -> bool:
     return config_sh_path().exists()
 
+
+def update_device_id(device_id: str) -> None:
+    """
+    只更新设备 ID，避免因配置解析异常而覆盖已有的 API Key 等字段。
+    如果配置文件不存在，则基于默认值创建。
+    """
+    path = config_sh_path()
+    if not path.exists():
+        cfg = AutoglmConfig.from_mapping(dict(_DEFAULTS))
+        cfg.device_id = device_id
+        write_config(cfg)
+        return
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        lines = []
+    new_lines: list[str] = []
+    updated = False
+    for ln in lines:
+        if re.match(r"^\s*export\s+PHONE_AGENT_DEVICE_ID=", ln):
+            new_lines.append(f"export PHONE_AGENT_DEVICE_ID={_shell_single_quote(device_id)}")
+            updated = True
+        else:
+            new_lines.append(ln)
+    if not updated:
+        new_lines.append(f"export PHONE_AGENT_DEVICE_ID={_shell_single_quote(device_id)}")
+    path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
