@@ -55,7 +55,7 @@ AutoGLM-Termux is a one-click deployment solution for Open-AutoGLM optimized for
 
 📱 Prerequisites
 
-1.  An Android phone (Android 7.0+)
+1.  An Android phone (Android 11+) Support wireless debugging
 2.  Termux installed ([Download Link](https://github.com/termux/termux-app/releases/))
 3.  Network Connection: Phone and Termux device must be on the same WiFi network.
 4.  API Key: Requires an API key from Zhipu AI, ModelScope, or another AI model that supports image recognition.
@@ -63,13 +63,13 @@ AutoGLM-Termux is a one-click deployment solution for Open-AutoGLM optimized for
 5.  **Voice Recognition (Optional):** For voice control, install the Termux:API app.
     - Download: https://github.com/termux/termux-api/releases/
     - After installation, go to **Settings > Apps (App Management)** or long-press the Termux:API icon on the desktop, enter the app permission management interface, and grant **Microphone** permission.
-    > For older Android versions or if the above Termux:API APK cannot be installed, refer to official docs: [Termux-microphone-record](https://wiki.termux.com/wiki/Termux-microphone-record), [Termux:API](https://wiki.termux.com/wiki/Termux:API), or try downloading a compatible version from [f-droid](https://f-droid.org/packages/com.termux.api/).
+    > If you cannot install the Termux: API APK above, you can read the official docs: [Termux-microphone-record](https://wiki.termux.com/wiki/Termux-microphone-record), [Termux:API](https://wiki.termux.com/wiki/Termux:API), or try downloading a compatible version from [f-droid](https://f-droid.org/packages/com.termux.api/).
 
 6.  **ADB Keyboard (Mandatory):**
     - Download: https://github.com/senzhk/ADBKeyBoard/blob/master/ADBKeyboard.apk
     - After installation, go to **Settings → System → Languages & input → Virtual keyboard → Manage keyboards**, and enable **"ADB Keyboard"**.
     - **This step is mandatory, otherwise Chinese input will not work.**
-    > For older Android systems like Android 7 and below, if the above ADB Keyboard cannot be installed, try this version: https://github.com/eraycc/AutoGLM-TERMUX/blob/main/ADBKeyboard/ADBKeyboard.apk
+    > If the above ADB Keyboard cannot be installed, try this version: https://github.com/eraycc/AutoGLM-TERMUX/blob/main/ADBKeyboard/ADBKeyboard.apk
 
 ---
 
@@ -145,6 +145,31 @@ The script will automatically perform the following:
 8.  **ADB Keyboard Reminder:** Prompts to install the required input method tool (mandatory step).
 9.  **ADB Wireless Configuration:** Guides you through setting up phone wireless debugging connection (supports auto-detection of connected devices).
 10. **Create Launcher:** Generates the `autoglm` shortcut command and automatically adds it to PATH.
+
+---
+
+🖥️ Web Management End & Resident Service (Optional Standalone Module)
+
+> The Web management panel module is independently maintained by [a251231](https://github.com/a251231) based on this one-click deployment project. For detailed deployment documentation and issue reporting, please refer to: [AutoGLM-TERMUX-Web](https://github.com/a251231/AutoGLM-TERMUX/)
+
+If you need to manage AutoGLM (configuration, start/stop, viewing logs, ADB pairing/connection/switch/disconnection, etc.) from a computer/tablet browser within the local area network, you can optionally install:
+
+```bash
+# Install Web Management End
+curl -O https://raw.githubusercontent.com/a251231/AutoGLM-TERMUX/refs/heads/main/install_web.sh
+chmod +x install_web.sh
+./install_web.sh
+
+# Start Web (default 0.0.0.0:8000)
+autoglm-web run --host 0.0.0.0 --port 8000
+
+# termux-services Resident Service (auto-restart on boot)
+curl -O https://raw.githubusercontent.com/a251231/AutoGLM-TERMUX/refs/heads/main/install_web_service.sh
+chmod +x install_web_service.sh
+./install_web_service.sh
+```
+
+After starting, the terminal will print a Token. Access `http://<Phone_IP>:8000/` in your browser and paste the Token to use it. The Token is stored in `~/.autoglm/web_token` and can be reset using `autoglm-web reset-token`.
 
 ---
 
