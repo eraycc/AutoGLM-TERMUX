@@ -149,6 +149,31 @@ chmod +x deploy.sh
 
 ---
 
+🖥️ Web 管理端与常驻服务（独立可选模块）
+
+> Web 管理面板模块由[a251231](https://github.com/a251231)基于此一键部署项目独立维护，详细部署文档及issue反馈请查看：[AutoGLM-TERMUX-Web](https://github.com/a251231/AutoGLM-TERMUX/)
+
+如果需要在局域网内用电脑/平板浏览器管理 AutoGLM（配置、启动/停止、看日志、ADB 配对/连接/切换/断开等），可选安装：
+
+```bash
+# 安装 Web 管理端
+curl -O https://raw.githubusercontent.com/a251231/AutoGLM-TERMUX/refs/heads/main/install_web.sh
+chmod +x install_web.sh
+./install_web.sh
+
+# 启动 Web（默认 0.0.0.0:8000）
+autoglm-web run --host 0.0.0.0 --port 8000
+
+# termux-services 常驻服务（重启自动拉起）
+curl -O https://raw.githubusercontent.com/a251231/AutoGLM-TERMUX/refs/heads/main/install_web_service.sh
+chmod +x install_web_service.sh
+./install_web_service.sh
+```
+
+启动后终端会打印 Token，浏览器访问 `http://<手机IP>:8000/`，粘贴 Token 即可使用。Token 存在 `~/.autoglm/web_token`，可用 `autoglm-web reset-token` 重置。
+
+---
+
 🎮 使用方法
 
 启动控制面板
