@@ -577,7 +577,7 @@ clone_or_update() {
   echo
   echo -e "${CYAN}$(i18n git_mirror_prompt)${NC}"
   read -rp "Git mirror [Enter=official / default=gitclone.com / custom]: " mirror_input
-
+  
   case "$mirror_input" in
     "")
       echo -e "${BLUE}[INFO]${NC} $(i18n git_mirror_official)"
@@ -613,10 +613,10 @@ clone_or_update() {
   fi
 
   in_termux && sed -i '/[Pp]illow/d' "$dir/requirements.txt" 2>/dev/null || true
-
+  
   log_info "$(i18n install_project_deps)"
   python -m pip install -r "$dir/requirements.txt"
-
+  
   log_info "$(i18n install_project)"
   python -m pip install -e "$dir"
 }
